@@ -3,9 +3,9 @@ extern crate num;
 extern crate image;
 
 
-// use std::fs::File;
-// use std::path::Path;
-// use num::complex::Complex;
+use std::fs::File;
+use std::path::Path;
+use num::complex::Complex;
 
 mod cubature;
 
@@ -37,82 +37,55 @@ impl CurveletTransform {
 }
 
 trait CoordinateTransform {
-    fn apply(&self, x : f64, y : f64) -> (f64,f64);
+    fn apply(&self,  p : &[f64]) -> [f64;2];
 }
 
 impl CoordinateTransform for CurveletTransform{
-    fn apply(&self, x : f64, y : f64) -> (f64,f64){
+    fn apply(&self, p : &[f64]) -> [f64;2]{
+        let x = p[0];
+        let y = p[1];
         //translate
-        let x_t = x + self.translation_x;
-        let y_t = y + self.translation_y;
+        let x_t = x - self.translation_x;
+        let y_t = y - self.translation_y;
         //rotate
         let x_r = self.cos_theta*x_t - self.sin_theta*y_t;
         let y_r = self.cos_theta*y_t + self.sin_theta*x_t;
         //scale
-        (x_r*self.sqrt_a,y_r*self.parabolic_scaling)
+        [x_r*self.sqrt_a,y_r*self.parabolic_scaling]
     }
 }
 
-fn square(x : &[f64]) -> f64 {
-    x[0]*(x[0]+1E-3).ln()
+fn integrand(x : &[f64]) -> f64 {
+    let r = x[0]*x[0] + x[1]*x[1];
+    10000.0*256.0*((-r).exp())
 }
 
 fn main() {
-    let t = CurveletTransform::new(2.0,0.5,1.0,0.0);
-    println!("{:#?}", t.apply(1.0,1.0));
-    // let max_iterations = 256u16;
-    //
-    // let imgx = 5000;
-    // let imgy = 5000;
-    //
-    // let scalex = 4.0 / imgx as f32;
-    // let scaley = 4.0 / imgy as f32;
-    //
-    // // Create a new ImgBuf with width: imgx and height: imgy
-    // let mut imgbuf = image::ImageBuffer::new(imgx, imgy);
-    //
-    // // Iterate over the coordiantes and pixels of the image
-    // for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
-    //     let cy = y as f32 * scaley - 2.0;
-    //     let cx = x as f32 * scalex - 2.0;
-    //
-    //     let mut z = Complex::new(cx, cy);
-    //     let c = Complex::new(-0.4, 0.6);
-    //
-    //     let mut i = 0;
-    //
-    //     for t in (0..max_iterations) {
-    //         if z.norm() > 2.0 {
-    //             break
-    //         }
-    //         z = z * z + c;
-    //         i = t;
-    //     }
-    //
-    //     // Create an 8bit pixel of type Luma and value i
-    //     // and assign in to the pixel at position (x, y)
-    //     *pixel = image::Luma([i as u8]);
-    //
-    // }
-    //
-    //
-    // // Save the image as “fractal.png”
-    // let ref mut fout = File::create(&Path::new("fractal.png")).unwrap();
-    //
-    // // We must indicate the image’s color type and what format to save as
-    // image::ImageLuma8(imgbuf).save(fout, image::PNG);
+    let t = CurveletTransform::new(25.0,0.5,0.25,0.25);
+    println!("{:#?}", t.apply(&[0.0,0.0]));
+    let imgx = 100;
+    let imgy = 100;
 
-    // fn hcubature(fdim : c_uint,
-    //         f : extern fn(ndim : c_uint, x : *mut c_double, data : *mut c_void, fval : *mut c_double) -> c_int,
-    //         fdata : *mut c_void,
-    //         dim : c_uint, xmin : *mut c_double,  xmax : *mut c_double,
-    //         maxEval : size_t, reqAbsError : c_double, reqRelError : c_double,
-    //         norm : libc::uint8_t,
-    //         val : *mut c_double, err : c_double) -> i32;
-     let xmin = [0.0;1];
-     let xmax = [1.0;1];
-     let (r,err) = cubature::integrate_fn_over_box(square, &xmin, &xmax, 100,
-            0.01, 0.01);
-    //   let r = unsafe{ cubature::pcubature(1, testFn, &mut fdata[0] as *mut _ as *mut c_void,1,&mut xmin[0],&mut xmax[0], 10, 1.0,1.0, 0, &mut fval, &mut err);};
-     println!("integral is {:?} to err: {:?}", r, err);
+    let scalex = 1.0 / imgx as f64;
+    let scaley = 1.0 / imgy as f64;
+
+    let mut imgbuf = image::ImageBuffer::new(imgx, imgy);
+
+    let mut min = [0.0;2];
+    let mut max = [1.0;2];
+    for (px, py, pixel) in imgbuf.enumerate_pixels_mut() {
+        min[0] = (px as f64) * scalex;
+        min[1] = (py as f64) * scaley;
+        max[0] = ((px + 1) as f64) * scalex;
+        max[1] = ((py + 1) as f64) * scaley;
+
+        let (r,err) = cubature::integrate_fn_over_box(|p| integrand(&(t.apply(p))), &min, &max, 100,
+               1.0, 1.0);
+        *pixel = image::Luma([r as u8]);
+
+    }
+
+    let ref mut fout = File::create(&Path::new("output.png")).unwrap();
+    image::ImageLuma8(imgbuf).save(fout, image::PNG);
+
 }
