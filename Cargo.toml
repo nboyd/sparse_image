@@ -1,0 +1,11 @@
+[package]
+name = "hello_world"
+version = "0.0.1"
+authors = [ "Your name <you@example.com>" ]
+build = "build.rs"
+[dependencies]
+libc = "*"
+image = "*"
+num = "*"
+[build-dependencies]
+gcc = "*"
