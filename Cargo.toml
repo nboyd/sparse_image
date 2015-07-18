@@ -9,7 +9,7 @@ image = "*"
 [build-dependencies]
 gcc = "*"
 [profile.dev]
-opt-level = 3  # Controls the --opt-level the compiler builds with
+opt-level = 1  # Controls the --opt-level the compiler builds with
 debug = true   # Controls whether the compiler passes `-g`
 rpath = false  # Controls whether the compiler passes `-C rpath`
 lto = false    # Controls `-C lto` for binaries and staticlibs
